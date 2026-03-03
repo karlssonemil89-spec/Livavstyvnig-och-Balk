@@ -17,11 +17,10 @@
         .val { font-weight: bold; font-size: 1.5rem; display: block; }
         .weight-badge { display: inline-block; background: #eee; color: #555; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; margin-top: 10px; font-weight: bold; }
         .stiff-res { background: #27ae60; margin-top: 15px; }
+        .fas-box { background: #e67e22; margin-top: 10px; padding: 10px; border-radius: 10px; color: white; font-weight: bold; }
         
         /* Skiss styling */
         .sketch-container { margin-top: 20px; text-align: center; background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 10px; }
-        .sketch { position: relative; width: 120px; height: 160px; border: 2px solid #333; margin: 20px auto; background: #f9f9f9; clip-path: polygon(0 0, 100% 0, 100% 85%, 85% 100%, 15% 100%, 0 85%); }
-        .dim-label { font-size: 0.75rem; font-weight: bold; color: #d35400; }
         .info-text { font-size: 0.7rem; color: #777; margin-top: 15px; line-height: 1.4; }
     </style>
 </head>
@@ -45,23 +44,27 @@
     <div class="result-box">
         <div style="font-size: 0.75rem; opacity: 0.9;">PLÅTMÅTT (H x B x T)</div>
         <span class="val" id="resMått">-</span>
+        
+        <div class="fas-box">
+            <div style="font-size: 0.7rem; opacity: 0.9; text-transform: uppercase;">Hörnfasing (Inåt liv)</div>
+            <span id="resFasMått" style="font-size: 1.3rem;">-</span>
+        </div>
     </div>
 
     <div class="sketch-container">
-        <div style="font-size: 0.7rem; color: #666; margin-bottom: 5px;">HÖRNKAP FÖR RADIE</div>
         <svg width="140" height="140" viewBox="0 0 100 120">
-            <path d="M 20,10 L 80,10 L 80,90 L 60,110 L 40,110 L 20,90 Z" fill="#e1e1e1" stroke="#333" stroke-width="2"/>
+            <path d="M 20,10 L 80,10 L 80,85 L 65,110 L 35,110 L 20,85 Z" fill="#e1e1e1" stroke="#333" stroke-width="2"/>
             <line x1="10" y1="10" x2="10" y2="110" stroke="#d35400" stroke-width="1"/>
             <text x="5" y="65" fill="#d35400" font-size="8" transform="rotate(-90 5,65)">H</text>
             <line x1="20" y1="5" x2="80" y2="5" stroke="#d35400" stroke-width="1"/>
             <text x="45" y="3" fill="#d35400" font-size="8">B</text>
-            <line x1="82" y1="90" x2="60" y2="112" stroke="#e67e22" stroke-width="1" stroke-dasharray="2"/>
-            <text x="75" y="110" fill="#e67e22" font-size="9" font-weight="bold">C: <tspan id="resC">-</tspan></text>
+            <path d="M 80,85 L 65,110" stroke="#fff" stroke-width="3"/>
+            <path d="M 20,85 L 35,110" stroke="#fff" stroke-width="3"/>
         </svg>
-        <div style="font-size: 0.7rem; color: #e67e22;">Kapa 45° vid hörn mot livet</div>
+        <div style="font-size: 0.7rem; color: #666;">Skiss: Kapa båda hörnen mot balkens liv.</div>
     </div>
 
-    <div class="section-title">Livavstyvningar & Vikt</div>
+    <div class="section-title">Antal & Totalvikt</div>
     
     <label>Balkens längd (mm)</label>
     <input type="number" id="beamLen" placeholder="t.ex. 6000" oninput="calculate()">
@@ -70,14 +73,14 @@
     <input type="number" id="ccDist" value="600" oninput="calculate()">
 
     <div id="stiffResult" class="result-box stiff-res" style="display:none;">
-        <strong>Resultat:</strong><br>
-        Antal avstyvningar: <span id="resHamQty">-</span> st<br>
+        <strong>Summering:</strong><br>
+        Antal plåtar: <span id="resHamQty">-</span> st<br>
         Totalvikt balk: <span id="resTotalWeight">-</span> kg
     </div>
 
     <div class="info-text">
-        * H = (h-2*tf)-4 | B = (b-tw)/2 - 10.<br>
-        * C-mått är säkerhetsmarginal för hålkärlsradie.
+        * H-mått är justerat för 4mm marginal.<br>
+        * Fasingen (C) är anpassad efter balkens radie + säkerhetsmarginal.
     </div>
 </div>
 
@@ -127,8 +130,8 @@ function calculate() {
     document.getElementById('resMått').innerText = hStiff.toFixed(1) + " x " + bStiff + " x " + tSuggest;
 
     // Fasning C = radie + 2mm (avrundat uppåt)
-    const cStiff = Math.ceil(radius + 2);
-    document.getElementById('resC').innerText = cStiff + " mm";
+    const cVal = Math.ceil(radius + 2);
+    document.getElementById('resFasMått').innerText = cVal + " x " + cVal + " mm";
 
     const bLenMm = parseFloat(document.getElementById('beamLen').value);
     const ccDist = parseFloat(document.getElementById('ccDist').value) || 600;
