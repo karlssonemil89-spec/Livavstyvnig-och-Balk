@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#004a99">
+    <title>Balk-Kalkylator</title>
+    <style>
+        body { font-family: -apple-system, system-ui, sans-serif; padding: 15px; background: #f0f2f5; color: #333; margin: 0; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h1 { font-size: 1.3rem; margin-top: 0; color: #004a99; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .section-title { font-weight: bold; margin-top: 20px; color: #004a99; font-size: 0.8rem; text-transform: uppercase; border-left: 3px solid #004a99; padding-left: 8px; }
+        label { display: block; margin-top: 12px; font-weight: 600; font-size: 0.85rem; }
+        select, input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        .result-box { margin-top: 15px; padding: 15px; background: #004a99; color: white; border-radius: 10px; text-align: center; }
+        .val { font-weight: bold; font-size: 1.5rem; display: block; }
+        .weight-badge { display: inline-block; background: #eee; color: #555; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; margin-top: 10px; font-weight: bold; }
+        .stiff-res { background: #27ae60; margin-top: 15px; }
+        .fas-box { background: #e67e22; margin-top: 10px; padding: 10px; border-radius: 10px; color: white; font-weight: bold; }
+        
+        /* Skiss styling */
+        .sketch-container { margin-top: 20px; text-align: center; background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 10px; }
+        .info-text { font-size: 0.7rem; color: #777; margin-top: 15px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>Balk-Kalkylator</h1>
+    
+    <label>Balktyp</label>
+    <select id="type" onchange="updateSizes()">
+        <option value="HEA">HEA</option>
+        <option value="HEB">HEB</option>
+        <option value="HEM">HEM</option>
+        <option value="UPE">UPE</option>
+    </select>
+
+    <label>Storlek</label>
+    <select id="size" onchange="calculate()"></select>
+    <div style="text-align:center;"><span class="weight-badge" id="resUnitWeight">Vikt: - kg/m</span></div>
+
+    <div class="result-box">
+        <div style="font-size: 0.75rem; opacity: 0.9;">PLÅTMÅTT (H x B x T)</div>
+        <span class="val" id="resMått">-</span>
+        
+        <div class="fas-box">
+            <div style="font-size: 0.7rem; opacity: 0.9; text-transform: uppercase;">Hörnfasing (Inåt liv)</div>
+            <span id="resFasMått" style="font-size: 1.3rem;">-</span>
+        </div>
+    </div>
+
+    <div class="sketch-container">
+        <svg width="140" height="140" viewBox="0 0 100 120">
+            <path d="M 20,10 L 80,10 L 80,85 L 65,110 L 35,110 L 20,85 Z" fill="#e1e1e1" stroke="#333" stroke-width="2"/>
+            <line x1="10" y1="10" x2="10" y2="110" stroke="#d35400" stroke-width="1"/>
+            <text x="5" y="65" fill="#d35400" font-size="8" transform="rotate(-90 5,65)">H</text>
+            <line x1="20" y1="5" x2="80" y2="5" stroke="#d35400" stroke-width="1"/>
+            <text x="45" y="3" fill="#d35400" font-size="8">B</text>
+            <path d="M 80,85 L 65,110" stroke="#fff" stroke-width="3"/>
+            <path d="M 20,85 L 35,110" stroke="#fff" stroke-width="3"/>
+        </svg>
+        <div style="font-size: 0.7rem; color: #666;">Skiss: Kapa båda hörnen mot balkens liv.</div>
+    </div>
+
+    <div class="section-title">Antal & Totalvikt</div>
+    
+    <label>Balkens längd (mm)</label>
+    <input type="number" id="beamLen" placeholder="t.ex. 6000" oninput="calculate()">
+    
+    <label>Önskat c/c (mm)</label>
+    <input type="number" id="ccDist" value="600" oninput="calculate()">
+
+    <div id="stiffResult" class="result-box stiff-res" style="display:none;">
+        <strong>Summering:</strong><br>
+        Antal plåtar: <span id="resHamQty">-</span> st<br>
+        Totalvikt balk: <span id="resTotalWeight">-</span> kg
+    </div>
+
+    <div class="info-text">
+        * H-mått är justerat för 4mm marginal.<br>
+        * Fasingen (C) är anpassad efter balkens radie + säkerhetsmarginal.
+    </div>
+</div>
+
+<script>
+// Data format: [h, b, tf, tw, vikt, radie_r]
+const data = {
+    "HEA": {
+        100:[96,100,8,5,16.7,12], 120:[114,120,8,5,19.9,12], 140:[133,140,8.5,5.5,24.7,12], 160:[152,160,9,6,30.4,15], 180:[171,180,9.5,6,35.5,15], 200:[190,200,10,6.5,42.3,18], 220:[210,220,11,7,50.5,18], 240:[230,240,12,7.5,60.3,21], 260:[250,260,12.5,7.5,68.2,24], 280:[270,280,13,8,76.4,24], 300:[290,300,14,8.5,88.3,27], 320:[310,300,15.5,9,97.6,27], 340:[330,300,16.5,9.5,105,27], 360:[350,300,17.5,10,112,27], 400:[390,300,19,11,125,27], 450:[440,300,21,11.5,140,27], 500:[490,300,23,12,155,27], 550:[540,300,24,12.5,166,27], 600:[590,300,25,13,178,27]
+    },
+    "HEB": {
+        100:[100,100,10,6,20.4,12], 120:[120,120,11,6.5,26.7,12], 140:[140,140,12,7,33.7,12], 160:[160,160,13,8,42.6,15], 180:[180,180,14,8.5,51.2,15], 200:[200,200,15,9,61.3,18], 220:[220,220,16,9.5,71.5,18], 240:[240,240,17,10,83.2,21], 260:[260,260,17.5,10,93,24], 280:[280,280,18,10.5,103,24], 300:[300,300,19,11,117,27], 320:[320,300,20.5,11.5,127,27], 340:[340,300,21.5,12,134,27], 360:[360,300,22.5,12.5,142,27], 400:[400,300,24,13.5,155,27], 450:[450,300,26,14,171,27], 500:[500,300,28,14.5,187,27], 550:[550,300,29,15,199,27], 600:[600,300,30,15.5,212,27]
+    },
+    "HEM": {
+        100:[120,106,20,12,41.8,12], 120:[140,126,20,12.5,52.1,12], 140:[160,146,22,13,63.2,12], 160:[180,166,23,14,76.2,15], 180:[200,186,24,14.5,88.9,15], 200:[220,206,25,15,103,18], 220:[240,226,26,15.5,117,18], 240:[270,248,32,18,157,21], 260:[290,268,32.5,18,172,24], 280:[310,288,33,18.5,189,24], 300:[340,310,39,21,238,27], 320:[359,309,40,21,245,27], 340:[377,309,40,21,248,27], 360:[395,308,40,21,250,27], 400:[432,307,40,21,256,27], 450:[478,307,40,21,263,27], 500:[524,306,40,21,270,27], 550:[572,306,40,21,278,27], 600:[620,305,40,21,285,27]
+    },
+    "UPE": {
+        100:[100,55,7.5,4.5,9.8,12], 120:[120,60,8,5,12.1,12], 140:[140,65,9,5,14.5,12], 160:[160,70,9.5,5.5,17,12], 180:[180,75,10.5,6,19.7,12], 200:[200,80,11,6,22.8,13], 220:[220,85,12,6.5,26.6,13], 240:[240,90,12.5,7,30.2,15], 270:[270,95,13.5,7.5,35.2,15], 300:[300,100,15,9.5,44.4,15], 330:[330,105,16,11,53.2,18], 360:[360,110,17,12,61.2,18], 400:[400,115,18,13.5,72.2,18]
+    }
+};
+
+function updateSizes() {
+    const type = document.getElementById('type').value;
+    const sizeSelect = document.getElementById('size');
+    sizeSelect.innerHTML = "";
+    Object.keys(data[type]).sort((a,b)=>a-b).forEach(s => {
+        let opt = document.createElement('option');
+        opt.value = s; opt.innerHTML = s;
+        sizeSelect.appendChild(opt);
+    });
+    calculate();
+}
+
+function calculate() {
+    const type = document.getElementById('type').value;
+    const size = document.getElementById('size').value;
+    if(!data[type][size]) return;
+    const [h, b, tf, tw, weight, radius] = data[type][size];
+
+    document.getElementById('resUnitWeight').innerText = "Vikt: " + weight + " kg/m";
+
+    const hStiff = (h - 2 * tf) - 4;
+    const bStiff = Math.floor((type === 'UPE') ? (b - tw) - 10 : ((b - tw) / 2) - 10);
+    
+    let tSuggest = Math.ceil(tw);
+    if (tSuggest > 10 && tSuggest % 2 !== 0) tSuggest++;
+
+    document.getElementById('resMått').innerText = hStiff.toFixed(1) + " x " + bStiff + " x " + tSuggest;
+
+    // Fasning C = radie + 2mm (avrundat uppåt)
+    const cVal = Math.ceil(radius + 2);
+    document.getElementById('resFasMått').innerText = cVal + " x " + cVal + " mm";
+
+    const bLenMm = parseFloat(document.getElementById('beamLen').value);
+    const ccDist = parseFloat(document.getElementById('ccDist').value) || 600;
+    
+    if (!isNaN(bLenMm) && bLenMm > 0) {
+        document.getElementById('stiffResult').style.display = 'block';
+        const qtyBase = Math.ceil(bLenMm / ccDist) + 1;
+        document.getElementById('resHamQty').innerText = (type === 'UPE' ? qtyBase : qtyBase * 2);
+        document.getElementById('resTotalWeight').innerText = ((bLenMm / 1000) * weight).toFixed(1);
+    } else {
+        document.getElementById('stiffResult').style.display = 'none';
+    }
+}
+updateSizes();
+</script>
+</body>
+</html>
